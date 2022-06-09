@@ -9,7 +9,7 @@ import (
 type user struct {
 	UserName string
 	Messages chan string
-	Conn     net.Conn
+	Conn     *net.Conn
 }
 
 var conns []net.Conn
@@ -34,9 +34,8 @@ func main() {
 func handle(conn net.Conn) {
 	defer conn.Close()
 
-	i := 0
+	var i int = 0
 	var u user
-	messages := make(chan string)
 
 	fmt.Fprintf(conn, "Please enter your name: ")
 
@@ -48,8 +47,8 @@ func handle(conn net.Conn) {
 		if i == 0 {
 			u = user{
 				UserName: ln,
-				Messages: messages,
-				Conn:     conn,
+				Messages: make(chan string),
+				Conn:     &conn,
 			}
 
 			conns = append(conns, conn)
@@ -62,15 +61,17 @@ func handle(conn net.Conn) {
 
 		i++
 	}
+
+	fmt.Println(fmt.Sprintf("User %v has logged out.", u.UserName))
 }
 
 func sendingMessage(u user) {
 	var m string
 
-	for _, c := range conns {
-		if c != u.Conn {
-			m = fmt.Sprintf("User %v said: %v", u.UserName, <-u.Messages)
+	m = fmt.Sprintf("User %v says: %v", u.UserName, <-u.Messages)
 
+	for _, c := range conns {
+		if c != *(u.Conn) {
 			fmt.Fprintln(c, m)
 		}
 	}
