@@ -17,8 +17,9 @@ type user struct {
 	Conn     *net.Conn
 }
 
-// conns is an array of connections that will store every connection made.
-var conns []net.Conn
+// conns is an map of connections that will store every connection made.
+// The map value is always true.
+var conns = make(map[*net.Conn]bool)
 
 func main() {
 	// A listener is opened in the port "8080" with the "tcp" network.
@@ -67,7 +68,7 @@ func handle(conn net.Conn) {
 				Conn:     &conn,
 			}
 
-			conns = append(conns, conn)
+			conns[&conn] = true
 
 			fmt.Println(fmt.Sprintf("User %v has logged in.", u.UserName))
 		} else {
@@ -78,6 +79,7 @@ func handle(conn net.Conn) {
 		i++
 	}
 
+	delete(conns, &conn)
 	fmt.Println(fmt.Sprintf("User %v has logged out.", u.UserName))
 }
 
@@ -88,11 +90,10 @@ func sendingMessage(u user) {
 
 	m = fmt.Sprintf("User %v says: %v", u.UserName, <-u.Messages)
 
-	for _, c := range conns {
-		// *() is to dereference "u.Conn".
-		// An alternative condition may be "&c != u.Conn".
-		if c != *(u.Conn) {
-			fmt.Fprintln(c, m)
+	for c := range conns {
+		if c != u.Conn {
+			// *() is to dereference the connection for the "fmt" package.
+			fmt.Fprintln(*(c), m)
 		}
 	}
 
