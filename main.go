@@ -51,32 +51,27 @@ func handle(conn net.Conn) {
 	// i is a counter used in the scanning of lines for determining
 	// in which line of all the messages that the user has sent the
 	// scanner is located.
-	var i int = 0
 	var u user
 
 	fmt.Fprintf(conn, "Please enter your name: ")
 
 	scanner := bufio.NewScanner(conn)
+	scanner.Scan()
+
+	u = user{
+		UserName: scanner.Text(),
+		Messages: make(chan string),
+		Conn:     &conn,
+	}
+
+	conns[&conn] = true
+
+	fmt.Println(fmt.Sprintf("User %v has logged in.", u.UserName))
 
 	for scanner.Scan() {
 		ln := scanner.Text()
-
-		if i == 0 {
-			u = user{
-				UserName: ln,
-				Messages: make(chan string),
-				Conn:     &conn,
-			}
-
-			conns[&conn] = true
-
-			fmt.Println(fmt.Sprintf("User %v has logged in.", u.UserName))
-		} else {
-			go func() { u.Messages <- ln }()
-			sendingMessage(u)
-		}
-
-		i++
+		go func() { u.Messages <- ln }()
+		sendingMessage(u)
 	}
 
 	delete(conns, &conn)
